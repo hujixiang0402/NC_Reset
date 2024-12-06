@@ -1,5 +1,6 @@
 from netcup_webservice import NetcupWebservice
 import sys
+from datetime import datetime  # 导入 datetime 模块
 
 
 def load_config():
@@ -123,8 +124,13 @@ def change_user_password(new_password):
 def get_server_traffic(server_name):
     """获取服务器当月流量并转换为TB"""
     try:
+        # 获取当前年份和月份
+        current_date = datetime.now()
+        year = current_date.year
+        month = current_date.month
+
         # 获取当月流量 (单位为GB)
-        traffic_in_gb = client.get_vserver_traffic_of_month(server_name)
+        traffic_in_gb = client.get_vserver_traffic_of_month(server_name, year, month)
         
         # 将GB转换为TB
         traffic_in_tb = traffic_in_gb / 1024  # 1 TB = 1024 GB
