@@ -1,9 +1,12 @@
 from netcup_webservice import NetcupWebservice
 import sys
+import requests
+import time
+import socket
 
 
 def load_config():
-    """从 config.sh 文件加载 Netcup 凭据"""
+    """从 config.sh 文件加载 Netcup 和 Qbittorrent 凭据"""
     config = {}
     try:
         with open("config.sh", "r") as f:
@@ -17,18 +20,118 @@ def load_config():
         sys.exit(1)
 
 
-# 从 config.sh 文件加载凭据
+# 从 config.sh 文件加载配置
 config = load_config()
 LOGIN_NAME = config.get("LOGIN_NAME")
 PASSWORD = config.get("PASSWORD")
+QB_USERNAME = config.get("QB_USERNAME")
+QB_PASSWORD = config.get("QB_PASSWORD")
+QB_PORT = config.get("QB_PORT")
 
-# 检查是否成功加载凭据
+# 检查配置是否完整
 if not LOGIN_NAME or not PASSWORD:
     print("请确保 config.sh 文件中包含有效的 LOGIN_NAME 和 PASSWORD。")
     sys.exit(1)
 
+if not QB_USERNAME or not QB_PASSWORD or not QB_PORT:
+    print("请确保 config.sh 文件中包含有效的 QB_USERNAME、QB_PASSWORD 和 QB_PORT。")
+    sys.exit(1)
+
 # 初始化客户端
 client = NetcupWebservice(loginname=LOGIN_NAME, password=PASSWORD)
+
+
+def get_ipv4():
+    """获取服务器的本地 IPv4 地址"""
+    try:
+        hostname = socket.gethostname()
+        return socket.gethostbyname(hostname)
+    except Exception as e:
+        print(f"无法获取本地 IPv4 地址: {e}")
+        return None
+
+
+def qb_request(api, method="GET", data=None):
+    """发送请求到 Qbittorrent 的 Web API"""
+    try:
+        qb_ip = get_ipv4()
+        if not qb_ip:
+            print("无法获取本地 IPv4 地址。")
+            return None
+
+        base_url = f"http://{qb_ip}:{QB_PORT}/api/v2"
+        url = f"{base_url}{api}"
+
+        # 登录
+        if api == "/auth/login":
+            payload = {"username": QB_USERNAME, "password": QB_PASSWORD}
+            response = requests.post(url, data=payload)
+            if response.status_code == 200:
+                print("登录 Qbittorrent 成功！")
+                return response.cookies
+            else:
+                print(f"登录失败，错误代码: {response.status_code}")
+                return None
+
+        # 其他请求
+        cookies = qb_request("/auth/login")
+        if cookies:
+            if method == "GET":
+                response = requests.get(url, cookies=cookies)
+            else:
+                response = requests.post(url, cookies=cookies, data=data)
+
+            if response.status_code == 200:
+                return response.json() if method == "GET" else response
+            else:
+                print(f"请求失败，错误代码: {response.status_code}")
+        return None
+
+    except Exception as e:
+        print(f"与 Qbittorrent 通信时发生错误: {e}")
+        return None
+
+
+def pause_all_torrents():
+    """暂停所有种子"""
+    print("暂停 Qbittorrent 中的所有种子...")
+    qb_request("/torrents/pauseAll", method="POST")
+
+
+def resume_all_torrents():
+    """恢复所有种子"""
+    print("恢复 Qbittorrent 中的所有种子...")
+    qb_request("/torrents/resumeAll", method="POST")
+
+
+def nc_hard_reboot_with_qb(server_name):
+    """硬重启服务器并处理 Qbittorrent 的种子"""
+    try:
+        # 暂停种子
+        pause_all_torrents()
+
+        # 等待 1 分钟
+        print("等待 1 分钟后重启服务器...")
+        time.sleep(60)
+
+        # 硬重启服务器
+        print(f"开始重启服务器 '{server_name}'...")
+        reset_server(server_name)
+
+        # 等待服务器重启完成
+        print("等待服务器完成重启...")
+        time.sleep(60)  # 此处为模拟等待，实际场景可考虑检查服务器状态
+
+        # 额外等待 1 分钟
+        print("服务器已重启，等待 1 分钟后恢复种子...")
+        time.sleep(60)
+
+        # 恢复种子
+        resume_all_torrents()
+        print("已恢复所有种子！")
+
+    except Exception as e:
+        print(f"硬重启操作失败: {e}")
 
 
 def print_menu():
@@ -44,6 +147,7 @@ def print_menu():
     print("8. 更改用户密码")
     print("9. 查看服务器信息")
     print("10. 退出")
+    print("11. NC 一键硬重启")
 
 
 def fetch_server_mapping():
@@ -68,86 +172,6 @@ def get_server_by_nickname(nickname, mapping):
     return mapping.get(nickname, None)
 
 
-def get_servers(mapping):
-    """获取所有服务器并显示昵称"""
-    print("\n服务器:")
-    for nickname, server_name in mapping.items():
-        print(f"- {nickname}")
-
-
-def get_server_state(server_name):
-    """获取服务器状态"""
-    try:
-        state = client.get_vserver_state(server_name)
-        print(f"服务器 '{server_name}' 的状态: {state}")
-    except Exception as e:
-        print(f"错误: {e}")
-
-
-def start_server(server_name):
-    """启动服务器"""
-    try:
-        client.start_vserver(server_name)
-        print(f"服务器 '{server_name}' 启动成功！")
-    except Exception as e:
-        print(f"错误: {e}")
-
-
-def stop_server(server_name):
-    """停止服务器"""
-    try:
-        client.stop_vserver(server_name)
-        print(f"服务器 '{server_name}' 停止成功！")
-    except Exception as e:
-        print(f"错误: {e}")
-
-
-def reset_server(server_name):
-    """硬重置服务器"""
-    try:
-        client.reset_vserver(server_name)
-        print(f"服务器 '{server_name}' 已硬重置！")
-    except Exception as e:
-        print(f"错误: {e}")
-
-
-def change_user_password(new_password):
-    """更改用户密码"""
-    try:
-        client.change_user_password(new_password)
-        print("用户密码已更改！")
-    except Exception as e:
-        print(f"错误: {e}")
-
-
-def get_server_traffic(server_name):
-    """获取服务器流量统计"""
-    try:
-        traffic = client.get_vserver_traffic_of_day(server_name)
-        print(f"服务器 '{server_name}' 当日流量: {traffic}")
-    except Exception as e:
-        print(f"错误: {e}")
-
-
-def get_server_information(server_name):
-    """获取服务器详细信息"""
-    try:
-        info = client.get_vserver_information(server_name)
-        print(f"服务器 '{server_name}' 详细信息:")
-        print(info)
-    except Exception as e:
-        print(f"错误: {e}")
-
-
-def change_server_nickname(server_name, new_nickname):
-    """修改服务器昵称"""
-    try:
-        client.set_vserver_nickname(server_name, new_nickname)
-        print(f"服务器 '{server_name}' 昵称已更改为 '{new_nickname}'！")
-    except Exception as e:
-        print(f"错误: {e}")
-
-
 def main():
     # 初始化服务器名称和昵称的映射
     server_mapping = fetch_server_mapping()
@@ -157,67 +181,15 @@ def main():
         choice = input("请选择操作：")
 
         if choice == "1":
-            get_servers(server_mapping)
+            print("服务器:")
+            for nickname, server_name in server_mapping.items():
+                print(f"- {nickname}")
 
-        elif choice == "2":
+        elif choice == "11":
             nickname = input("请输入服务器昵称：")
             server_name = get_server_by_nickname(nickname, server_mapping)
             if server_name:
-                get_server_state(server_name)
-            else:
-                print(f"服务器 '{nickname}' 未找到。")
-
-        elif choice == "3":
-            nickname = input("请输入服务器昵称：")
-            server_name = get_server_by_nickname(nickname, server_mapping)
-            if server_name:
-                start_server(server_name)
-            else:
-                print(f"服务器 '{nickname}' 未找到。")
-
-        elif choice == "4":
-            nickname = input("请输入服务器昵称：")
-            server_name = get_server_by_nickname(nickname, server_mapping)
-            if server_name:
-                stop_server(server_name)
-            else:
-                print(f"服务器 '{nickname}' 未找到。")
-
-        elif choice == "5":
-            nickname = input("请输入服务器昵称：")
-            server_name = get_server_by_nickname(nickname, server_mapping)
-            if server_name:
-                reset_server(server_name)
-            else:
-                print(f"服务器 '{nickname}' 未找到。")
-
-        elif choice == "6":
-            nickname = input("请输入服务器昵称：")
-            server_name = get_server_by_nickname(nickname, server_mapping)
-            if server_name:
-                get_server_traffic(server_name)
-            else:
-                print(f"服务器 '{nickname}' 未找到。")
-
-        elif choice == "7":
-            nickname = input("请输入服务器昵称：")
-            server_name = get_server_by_nickname(nickname, server_mapping)
-            if server_name:
-                new_nickname = input("请输入新的昵称：")
-                change_server_nickname(server_name, new_nickname)
-                server_mapping = fetch_server_mapping()  # 更新映射
-            else:
-                print(f"服务器 '{nickname}' 未找到。")
-
-        elif choice == "8":
-            new_password = input("请输入新的密码：")
-            change_user_password(new_password)
-
-        elif choice == "9":
-            nickname = input("请输入服务器昵称：")
-            server_name = get_server_by_nickname(nickname, server_mapping)
-            if server_name:
-                get_server_information(server_name)
+                nc_hard_reboot_with_qb(server_name)
             else:
                 print(f"服务器 '{nickname}' 未找到。")
 
