@@ -43,13 +43,27 @@ def print_menu():
     print("9. 查看 服务器 信息")
     print("10. 退出")
 
+def get_vserver_nickname(vserver_id):
+    """获取 vServer 的昵称"""
+    try:
+        # 获取服务器详细信息，假设通过该 API 获取昵称
+        info = client.get_vserver_information(vserver_id)
+        return info.nickname  # 假设返回的信息中有昵称字段
+    except Exception as e:
+        print(f"获取昵称时出错: {e}")
+        return None
+
 def get_servers():
-    """获取所有 服务器"""
+    """获取所有 服务器并显示昵称"""
     try:
         servers = client.get_vservers()
         print("\n服务器:")
         for server in servers:
-            print(f"- {server}")
+            nickname = get_vserver_nickname(server)  # 获取服务器的昵称
+            if nickname:
+                print(f"- {nickname} ({server})")  # 显示昵称和服务器 ID
+            else:
+                print(f"- {server}")  # 如果无法获取昵称，显示服务器 ID
     except Exception as e:
         print(f"错误: {e}")
 
@@ -127,27 +141,33 @@ def main():
             get_servers()
         
         elif choice == "2":
-            server_name = input("请输入 服务器 名称：")
+            server_name = input("请输入 服务器 名称（昵称或ID）：")
+            server_name = get_vserver_nickname(server_name) or server_name  # 获取昵称，如果没有则使用输入的ID
             get_server_state(server_name)
         
         elif choice == "3":
-            server_name = input("请输入 服务器 名称：")
+            server_name = input("请输入 服务器 名称（昵称或ID）：")
+            server_name = get_vserver_nickname(server_name) or server_name
             start_server(server_name)
         
         elif choice == "4":
-            server_name = input("请输入 服务器 名称：")
+            server_name = input("请输入 服务器 名称（昵称或ID）：")
+            server_name = get_vserver_nickname(server_name) or server_name
             stop_server(server_name)
         
         elif choice == "5":
-            server_name = input("请输入 服务器 名称：")
+            server_name = input("请输入 服务器 名称（昵称或ID）：")
+            server_name = get_vserver_nickname(server_name) or server_name
             reset_server(server_name)
         
         elif choice == "6":
-            server_name = input("请输入 服务器 名称：")
+            server_name = input("请输入 服务器 名称（昵称或ID）：")
+            server_name = get_vserver_nickname(server_name) or server_name
             get_server_traffic(server_name)
         
         elif choice == "7":
-            server_name = input("请输入 服务器 名称：")
+            server_name = input("请输入 服务器 名称（昵称或ID）：")
+            server_name = get_vserver_nickname(server_name) or server_name
             new_nickname = input("请输入新的昵称：")
             change_server_nickname(server_name, new_nickname)
         
@@ -156,7 +176,8 @@ def main():
             change_user_password(new_password)
         
         elif choice == "9":
-            server_name = input("请输入 服务器 名称：")
+            server_name = input("请输入 服务器 名称（昵称或ID）：")
+            server_name = get_vserver_nickname(server_name) or server_name
             get_server_information(server_name)
         
         elif choice == "10":
