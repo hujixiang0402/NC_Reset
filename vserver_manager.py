@@ -43,13 +43,27 @@ def print_menu():
     print("9. 查看 服务器 信息")
     print("10. 退出")
 
+def get_server_hostname(server_id):
+    """获取 vServer 的主机名"""
+    try:
+        info = client.get_vserver_information(server_id)  # 获取 vServer 的详细信息
+        hostname = info.get("hostname")  # 假设返回的字典有 "hostname" 键
+        return hostname
+    except Exception as e:
+        print(f"获取主机名时出错: {e}")
+        return None
+
 def get_servers():
-    """获取所有 服务器"""
+    """获取所有 服务器并显示主机名"""
     try:
         servers = client.get_vservers()
         print("\n服务器:")
         for server in servers:
-            print(f"- {server}")
+            hostname = get_server_hostname(server)  # 获取服务器的主机名
+            if hostname:
+                print(f"- {hostname}")  # 如果能获取到主机名，显示主机名
+            else:
+                print(f"- {server}")  # 否则显示服务器ID
     except Exception as e:
         print(f"错误: {e}")
 
