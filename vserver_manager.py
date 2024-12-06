@@ -1,6 +1,6 @@
 from netcup_webservice import NetcupWebservice
 import sys
-from datetime import datetime  # 导入 datetime 模块
+import datetime
 
 
 def load_config():
@@ -40,7 +40,7 @@ def print_menu():
     print("3. 启动服务器")
     print("4. 停止服务器")
     print("5. 重启服务器")
-    print("6. 获取服务器当月流量")
+    print("6. 获取服务器月流量")  # 修改为月流量
     print("7. 修改服务器昵称")
     print("8. 更改用户密码")
     print("9. 查看服务器信息")
@@ -122,20 +122,18 @@ def change_user_password(new_password):
 
 
 def get_server_traffic(server_name):
-    """获取服务器当月流量并转换为TB"""
+    """获取服务器本月流量统计"""
     try:
-        # 获取当前年份和月份
-        current_date = datetime.now()
-        year = current_date.year
-        month = current_date.month
+        # 获取当前时间并提取年份和月份
+        now = datetime.datetime.now()
+        year = now.year
+        month = now.month
 
-        # 获取当月流量 (单位为GB)
-        traffic_in_gb = client.get_vserver_traffic_of_month(server_name, year, month)
+        # 获取本月流量
+        traffic = client.get_vserver_traffic_of_month(server_name, year, month)
         
-        # 将GB转换为TB
-        traffic_in_tb = traffic_in_gb / 1024  # 1 TB = 1024 GB
-        
-        print(f"服务器 '{server_name}' 当月流量: {traffic_in_tb:.2f} TB")
+        print(f"服务器 '{server_name}' {year}年{month}月的流量:")
+        print(traffic)  # 假设流量数据已经是我们需要的格式，可以根据实际情况调整输出格式
     except Exception as e:
         print(f"错误: {e}")
 
@@ -206,7 +204,7 @@ def main():
             nickname = input("请输入服务器昵称：")
             server_name = get_server_by_nickname(nickname, server_mapping)
             if server_name:
-                get_server_traffic(server_name)
+                get_server_traffic(server_name)  # 获取本月流量
             else:
                 print(f"服务器 '{nickname}' 未找到。")
 
