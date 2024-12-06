@@ -1,6 +1,7 @@
-from netcup_webservice import NetcupWebservice
+import os
 import sys
-
+from datetime import datetime
+from netcup_webservice import NetcupWebservice
 
 def load_config():
     """从 config.sh 文件加载 Netcup 凭据"""
@@ -70,7 +71,7 @@ def get_server_by_nickname(nickname, mapping):
 
 def get_servers(mapping):
     """获取所有服务器并显示昵称"""
-    print("\n服务器:")
+    print("\n服务器: ")
     for nickname, server_name in mapping.items():
         print(f"- {nickname}")
 
@@ -123,7 +124,14 @@ def change_user_password(new_password):
 def get_server_traffic(server_name):
     """获取服务器流量统计"""
     try:
-        traffic = client.get_vserver_traffic_of_day(server_name)
+        # 获取当前日期
+        today = datetime.today()
+        year = today.year
+        month = today.month
+        day = today.day
+
+        # 获取当天的流量数据
+        traffic = client.get_vserver_traffic_of_day(server_name, year, month, day)
         print(f"服务器 '{server_name}' 当日流量: {traffic}")
     except Exception as e:
         print(f"错误: {e}")
@@ -133,7 +141,7 @@ def get_server_information(server_name):
     """获取服务器详细信息"""
     try:
         info = client.get_vserver_information(server_name)
-        print(f"服务器 '{server_name}' 详细信息:")
+        print(f"服务器 '{server_name}' 详细信息: ")
         print(info)
     except Exception as e:
         print(f"错误: {e}")
