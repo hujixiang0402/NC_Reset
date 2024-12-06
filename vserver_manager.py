@@ -130,13 +130,13 @@ def get_server_traffic(server_name):
         month = now.month
 
         # 获取流量统计令牌
-        token = client.get_vserver_stat_token(server_name, year, month)
+        token = client.getVServerStatToken(server_name, year, month)
         if not token:
             print(f"无法获取服务器 '{server_name}' 的流量令牌。")
             return
         
         # 使用令牌获取流量
-        traffic = client.get_vserver_stat(token)
+        traffic = client.getVServerStat(token)
         
         print(f"服务器 '{server_name}' {year}年{month}月的流量:")
         print(traffic)  # 假设流量数据已经是我们需要的格式，可以根据实际情况调整输出格式
