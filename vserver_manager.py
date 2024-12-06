@@ -44,7 +44,11 @@ def get_vserver_nickname(vserver_name):
     """获取虚拟服务器的昵称"""
     try:
         info = client.get_vserver_information(vserver_name)
-        return info.get("nickname", vserver_name)  # 如果无昵称，返回原始名称
+        # 检查返回的对象是否有 nickname 属性
+        if hasattr(info, "nickname"):
+            return info.nickname  # 通过属性访问昵称
+        else:
+            return vserver_name  # 如果没有昵称属性，返回原始名称
     except Exception as e:
         print(f"获取昵称时出错: {e}")
         return vserver_name
