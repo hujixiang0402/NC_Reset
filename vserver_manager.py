@@ -40,26 +40,19 @@ def print_menu():
     print("9. 查看服务器信息")
     print("10. 退出")
 
-def get_vserver_nickname(vserver_name):
-    """获取虚拟服务器的昵称"""
-    try:
-        info = client.get_vserver_information(vserver_name)
-        # 检查返回的对象是否有 nickname 属性
-        if hasattr(info, "nickname"):
-            return info.nickname  # 通过属性访问昵称
-        else:
-            return vserver_name  # 如果没有昵称属性，返回原始名称
-    except Exception as e:
-        print(f"获取昵称时出错: {e}")
-        return vserver_name
-
 def get_servers():
     """获取所有服务器并显示昵称"""
     try:
         servers = client.get_vservers()
         print("\n服务器:")
         for server in servers:
-            nickname = get_vserver_nickname(server)
+            try:
+                # 获取详细信息
+                info = client.get_vserver_information(server)
+                nickname = info.get('vServerNickname', server)  # 优先使用昵称
+            except Exception as e:
+                print(f"获取服务器信息时出错: {e}")
+                nickname = server  # 如果获取信息失败，退回显示服务器名称
             print(f"- {nickname}")
     except Exception as e:
         print(f"错误: {e}")
@@ -67,36 +60,32 @@ def get_servers():
 def get_server_state(server_name):
     """获取服务器状态"""
     try:
-        nickname = get_vserver_nickname(server_name)
         state = client.get_vserver_state(server_name)
-        print(f"服务器 '{nickname}' 的状态: {state}")
+        print(f"服务器 '{server_name}' 的状态: {state}")
     except Exception as e:
         print(f"错误: {e}")
 
 def start_server(server_name):
     """启动服务器"""
     try:
-        nickname = get_vserver_nickname(server_name)
         client.start_vserver(server_name)
-        print(f"服务器 '{nickname}' 启动成功！")
+        print(f"服务器 '{server_name}' 启动成功！")
     except Exception as e:
         print(f"错误: {e}")
 
 def stop_server(server_name):
     """停止服务器"""
     try:
-        nickname = get_vserver_nickname(server_name)
         client.stop_vserver(server_name)
-        print(f"服务器 '{nickname}' 停止成功！")
+        print(f"服务器 '{server_name}' 停止成功！")
     except Exception as e:
         print(f"错误: {e}")
 
 def reset_server(server_name):
     """硬重置服务器"""
     try:
-        nickname = get_vserver_nickname(server_name)
         client.reset_vserver(server_name)
-        print(f"服务器 '{nickname}' 已硬重置！")
+        print(f"服务器 '{server_name}' 已硬重置！")
     except Exception as e:
         print(f"错误: {e}")
 
@@ -111,18 +100,16 @@ def change_user_password(new_password):
 def get_server_traffic(server_name):
     """获取服务器流量统计"""
     try:
-        nickname = get_vserver_nickname(server_name)
         traffic = client.get_vserver_traffic_of_day(server_name)
-        print(f"服务器 '{nickname}' 当日流量: {traffic}")
+        print(f"服务器 '{server_name}' 当日流量: {traffic}")
     except Exception as e:
         print(f"错误: {e}")
 
 def get_server_information(server_name):
     """获取服务器详细信息"""
     try:
-        nickname = get_vserver_nickname(server_name)
         info = client.get_vserver_information(server_name)
-        print(f"服务器 '{nickname}' 详细信息:")
+        print(f"服务器 '{server_name}' 详细信息:")
         print(info)
     except Exception as e:
         print(f"错误: {e}")
