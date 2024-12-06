@@ -47,7 +47,8 @@ def get_server_hostname(server_id):
     """获取 vServer 的主机名"""
     try:
         info = client.get_vserver_information(server_id)  # 获取 vServer 的详细信息
-        hostname = info.get("hostname")  # 假设返回的字典有 "hostname" 键
+        print(f"vServer 信息: {info}")  # 打印返回的对象，查看它的属性
+        hostname = info.hostname  # 假设有一个 `hostname` 属性
         return hostname
     except Exception as e:
         print(f"获取主机名时出错: {e}")
