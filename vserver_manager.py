@@ -1,6 +1,5 @@
 from netcup_webservice import NetcupWebservice
 import sys
-from datetime import datetime
 
 
 def load_config():
@@ -40,7 +39,7 @@ def print_menu():
     print("3. 启动服务器")
     print("4. 停止服务器")
     print("5. 重启服务器")
-    print("6. 获取服务器流量")
+    print("6. 获取服务器当月流量")
     print("7. 修改服务器昵称")
     print("8. 更改用户密码")
     print("9. 查看服务器信息")
@@ -122,14 +121,15 @@ def change_user_password(new_password):
 
 
 def get_server_traffic(server_name):
-    """获取服务器流量统计"""
+    """获取服务器当月流量并转换为TB"""
     try:
-        # 获取服务器的统计信息令牌
-        stat_token = client.get_vserver_stat_token(server_name)
+        # 获取当月流量 (单位为GB)
+        traffic_in_gb = client.get_vserver_traffic_of_month(server_name)
         
-        # 使用统计信息令牌获取流量数据
-        traffic = client.get_vserver_traffic_of_month(server_name, stat_token)
-        print(f"服务器 '{server_name}' 当月流量: {traffic}")
+        # 将GB转换为TB
+        traffic_in_tb = traffic_in_gb / 1024  # 1 TB = 1024 GB
+        
+        print(f"服务器 '{server_name}' 当月流量: {traffic_in_tb:.2f} TB")
     except Exception as e:
         print(f"错误: {e}")
 
