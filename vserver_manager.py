@@ -46,23 +46,33 @@ def print_menu():
     print("10. 退出")
 
 
-def get_servers():
-    """获取所有服务器并显示昵称"""
+def fetch_server_mapping():
+    """获取服务器名称和昵称的映射"""
+    mapping = {}
     try:
         servers = client.get_vservers()
-        print("\n服务器:")
         for server in servers:
             try:
-                # 获取详细信息
                 info = client.get_vserver_information(server)
-                # 尝试访问昵称属性
-                nickname = getattr(info, 'vServerNickname', server)  # 优先使用昵称
-            except Exception as e:
-                print(f"获取服务器信息时出错: {e}")
-                nickname = server  # 如果获取信息失败，退回显示服务器名称
-            print(f"- {nickname}")
+                nickname = getattr(info, 'vServerNickname', server)  # 获取昵称
+                mapping[nickname] = server  # 建立昵称到名称的映射
+            except Exception:
+                mapping[server] = server  # 如果获取失败，用名称作为映射
     except Exception as e:
-        print(f"错误: {e}")
+        print(f"获取服务器信息时出错: {e}")
+    return mapping
+
+
+def get_server_by_nickname(nickname, mapping):
+    """根据昵称获取服务器名称"""
+    return mapping.get(nickname, None)
+
+
+def get_servers(mapping):
+    """获取所有服务器并显示昵称"""
+    print("\n服务器:")
+    for nickname, server_name in mapping.items():
+        print(f"- {nickname}")
 
 
 def get_server_state(server_name):
@@ -139,45 +149,77 @@ def change_server_nickname(server_name, new_nickname):
 
 
 def main():
+    # 初始化服务器名称和昵称的映射
+    server_mapping = fetch_server_mapping()
+
     while True:
         print_menu()
         choice = input("请选择操作：")
 
         if choice == "1":
-            get_servers()
+            get_servers(server_mapping)
 
         elif choice == "2":
-            server_name = input("请输入服务器名称：")
-            get_server_state(server_name)
+            nickname = input("请输入服务器昵称：")
+            server_name = get_server_by_nickname(nickname, server_mapping)
+            if server_name:
+                get_server_state(server_name)
+            else:
+                print(f"服务器 '{nickname}' 未找到。")
 
         elif choice == "3":
-            server_name = input("请输入服务器名称：")
-            start_server(server_name)
+            nickname = input("请输入服务器昵称：")
+            server_name = get_server_by_nickname(nickname, server_mapping)
+            if server_name:
+                start_server(server_name)
+            else:
+                print(f"服务器 '{nickname}' 未找到。")
 
         elif choice == "4":
-            server_name = input("请输入服务器名称：")
-            stop_server(server_name)
+            nickname = input("请输入服务器昵称：")
+            server_name = get_server_by_nickname(nickname, server_mapping)
+            if server_name:
+                stop_server(server_name)
+            else:
+                print(f"服务器 '{nickname}' 未找到。")
 
         elif choice == "5":
-            server_name = input("请输入服务器名称：")
-            reset_server(server_name)
+            nickname = input("请输入服务器昵称：")
+            server_name = get_server_by_nickname(nickname, server_mapping)
+            if server_name:
+                reset_server(server_name)
+            else:
+                print(f"服务器 '{nickname}' 未找到。")
 
         elif choice == "6":
-            server_name = input("请输入服务器名称：")
-            get_server_traffic(server_name)
+            nickname = input("请输入服务器昵称：")
+            server_name = get_server_by_nickname(nickname, server_mapping)
+            if server_name:
+                get_server_traffic(server_name)
+            else:
+                print(f"服务器 '{nickname}' 未找到。")
 
         elif choice == "7":
-            server_name = input("请输入服务器名称：")
-            new_nickname = input("请输入新的昵称：")
-            change_server_nickname(server_name, new_nickname)
+            nickname = input("请输入服务器昵称：")
+            server_name = get_server_by_nickname(nickname, server_mapping)
+            if server_name:
+                new_nickname = input("请输入新的昵称：")
+                change_server_nickname(server_name, new_nickname)
+                server_mapping = fetch_server_mapping()  # 更新映射
+            else:
+                print(f"服务器 '{nickname}' 未找到。")
 
         elif choice == "8":
             new_password = input("请输入新的密码：")
             change_user_password(new_password)
 
         elif choice == "9":
-            server_name = input("请输入服务器名称：")
-            get_server_information(server_name)
+            nickname = input("请输入服务器昵称：")
+            server_name = get_server_by_nickname(nickname, server_mapping)
+            if server_name:
+                get_server_information(server_name)
+            else:
+                print(f"服务器 '{nickname}' 未找到。")
 
         elif choice == "10":
             print("退出程序...")
