@@ -31,57 +31,57 @@ client = NetcupWebservice(loginname=LOGIN_NAME, password=PASSWORD)
 
 def print_menu():
     """打印功能菜单"""
-    print("\n--- Netcup vServer 管理器 ---")
-    print("1. 查看所有 vServers")
-    print("2. 获取 vServer 状态")
-    print("3. 启动 vServer")
-    print("4. 停止 vServer")
-    print("5. 重启 vServer")
-    print("6. 获取 vServer 流量")
-    print("7. 修改 vServer 昵称")
+    print("\n--- Netcup 服务器 管理器 ---")
+    print("1. 查看所有 服务器")
+    print("2. 获取 服务器 状态")
+    print("3. 启动 服务器")
+    print("4. 停止 服务器")
+    print("5. 重启 服务器")
+    print("6. 获取 服务器 流量")
+    print("7. 修改 服务器 昵称")
     print("8. 更改用户密码")
-    print("9. 查看 vServer 信息")
+    print("9. 查看 服务器 信息")
     print("10. 退出")
 
-def get_vservers():
-    """获取所有 vServer"""
+def get_servers():
+    """获取所有 服务器"""
     try:
-        vservers = client.get_vservers()
-        print("\nvServers:")
-        for vserver in vservers:
-            print(f"- {vserver}")
+        servers = client.get_vservers()
+        print("\n服务器:")
+        for server in servers:
+            print(f"- {server}")
     except Exception as e:
         print(f"错误: {e}")
 
-def get_vserver_state(vserver_name):
-    """获取 vServer 状态"""
+def get_server_state(server_name):
+    """获取 服务器 状态"""
     try:
-        state = client.get_vserver_state(vserver_name)
-        print(f"vServer '{vserver_name}' 的状态: {state}")
+        state = client.get_vserver_state(server_name)
+        print(f"服务器 '{server_name}' 的状态: {state}")
     except Exception as e:
         print(f"错误: {e}")
 
-def start_vserver(vserver_name):
-    """启动 vServer"""
+def start_server(server_name):
+    """启动 服务器"""
     try:
-        client.start_vserver(vserver_name)
-        print(f"vServer '{vserver_name}' 启动成功！")
+        client.start_vserver(server_name)
+        print(f"服务器 '{server_name}' 启动成功！")
     except Exception as e:
         print(f"错误: {e}")
 
-def stop_vserver(vserver_name):
-    """停止 vServer"""
+def stop_server(server_name):
+    """停止 服务器"""
     try:
-        client.stop_vserver(vserver_name)
-        print(f"vServer '{vserver_name}' 停止成功！")
+        client.stop_vserver(server_name)
+        print(f"服务器 '{server_name}' 停止成功！")
     except Exception as e:
         print(f"错误: {e}")
 
-def reset_vserver(vserver_name):
-    """硬重置 vServer"""
+def reset_server(server_name):
+    """硬重置 服务器"""
     try:
-        client.reset_vserver(vserver_name)
-        print(f"vServer '{vserver_name}' 已硬重置！")
+        client.reset_vserver(server_name)
+        print(f"服务器 '{server_name}' 已硬重置！")
     except Exception as e:
         print(f"错误: {e}")
 
@@ -93,28 +93,28 @@ def change_user_password(new_password):
     except Exception as e:
         print(f"错误: {e}")
 
-def get_vserver_traffic(vserver_name):
-    """获取 vServer 流量统计"""
+def get_server_traffic(server_name):
+    """获取 服务器 流量统计"""
     try:
-        traffic = client.get_vserver_traffic_of_day(vserver_name)
-        print(f"vServer '{vserver_name}' 当日流量: {traffic}")
+        traffic = client.get_vserver_traffic_of_day(server_name)
+        print(f"服务器 '{server_name}' 当日流量: {traffic}")
     except Exception as e:
         print(f"错误: {e}")
 
-def get_vserver_information(vserver_name):
-    """获取 vServer 详细信息"""
+def get_server_information(server_name):
+    """获取 服务器 详细信息"""
     try:
-        info = client.get_vserver_information(vserver_name)
-        print(f"vServer '{vserver_name}' 详细信息:")
+        info = client.get_vserver_information(server_name)
+        print(f"服务器 '{server_name}' 详细信息:")
         print(info)
     except Exception as e:
         print(f"错误: {e}")
 
-def change_vserver_nickname(vserver_name, new_nickname):
-    """修改 vServer 昵称"""
+def change_server_nickname(server_name, new_nickname):
+    """修改 服务器 昵称"""
     try:
-        client.set_vserver_nickname(vserver_name, new_nickname)
-        print(f"vServer '{vserver_name}' 昵称已更改为 '{new_nickname}'！")
+        client.set_vserver_nickname(server_name, new_nickname)
+        print(f"服务器 '{server_name}' 昵称已更改为 '{new_nickname}'！")
     except Exception as e:
         print(f"错误: {e}")
 
@@ -124,40 +124,40 @@ def main():
         choice = input("请选择操作：")
         
         if choice == "1":
-            get_vservers()
+            get_servers()
         
         elif choice == "2":
-            vserver_name = input("请输入 vServer 名称：")
-            get_vserver_state(vserver_name)
+            server_name = input("请输入 服务器 名称：")
+            get_server_state(server_name)
         
         elif choice == "3":
-            vserver_name = input("请输入 vServer 名称：")
-            start_vserver(vserver_name)
+            server_name = input("请输入 服务器 名称：")
+            start_server(server_name)
         
         elif choice == "4":
-            vserver_name = input("请输入 vServer 名称：")
-            stop_vserver(vserver_name)
+            server_name = input("请输入 服务器 名称：")
+            stop_server(server_name)
         
         elif choice == "5":
-            vserver_name = input("请输入 vServer 名称：")
-            reset_vserver(vserver_name)
+            server_name = input("请输入 服务器 名称：")
+            reset_server(server_name)
         
         elif choice == "6":
-            vserver_name = input("请输入 vServer 名称：")
-            get_vserver_traffic(vserver_name)
+            server_name = input("请输入 服务器 名称：")
+            get_server_traffic(server_name)
         
         elif choice == "7":
-            vserver_name = input("请输入 vServer 名称：")
+            server_name = input("请输入 服务器 名称：")
             new_nickname = input("请输入新的昵称：")
-            change_vserver_nickname(vserver_name, new_nickname)
+            change_server_nickname(server_name, new_nickname)
         
         elif choice == "8":
             new_password = input("请输入新的密码：")
             change_user_password(new_password)
         
         elif choice == "9":
-            vserver_name = input("请输入 vServer 名称：")
-            get_vserver_information(vserver_name)
+            server_name = input("请输入 服务器 名称：")
+            get_server_information(server_name)
         
         elif choice == "10":
             print("退出程序...")
