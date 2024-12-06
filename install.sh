@@ -15,9 +15,9 @@ echo "创建虚拟环境..."
 python3 -m venv venv
 source venv/bin/activate
 
-# 安装 Python 依赖
+# 手动安装 Python 依赖
 echo "安装 Python 依赖..."
-pip install -r requirements.txt
+pip install netcup-webservice
 
 # 提示用户输入 Netcup 登录凭据并保存为配置文件
 echo "请输入 Netcup 登录凭据（用于 API）..."
