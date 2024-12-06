@@ -124,15 +124,12 @@ def change_user_password(new_password):
 def get_server_traffic(server_name):
     """获取服务器流量统计"""
     try:
-        # 获取当前日期
-        today = datetime.today()
-        year = today.year
-        month = today.month
-        day = today.day
-
-        # 获取当天的流量数据
-        traffic = client.get_vserver_traffic_of_day(server_name, year, month, day)
-        print(f"服务器 '{server_name}' 当日流量: {traffic}")
+        # 获取服务器的统计信息令牌
+        stat_token = client.get_vserver_stat_token(server_name)
+        
+        # 使用统计信息令牌获取流量数据
+        traffic = client.get_vserver_traffic_of_month(server_name, stat_token)
+        print(f"服务器 '{server_name}' 当月流量: {traffic}")
     except Exception as e:
         print(f"错误: {e}")
 
