@@ -1,241 +1,59 @@
-import os
-import sys
-from datetime import datetime
-from netcup_webservice import NetcupWebservice
+#!/bin/bash
 
-def load_config():
-    """从 config.sh 文件加载 Netcup 凭据"""
-    config = {}
-    try:
-        with open("config.sh", "r") as f:
-            for line in f.readlines():
-                if "=" in line:
-                    key, value = line.strip().split("=", 1)
-                    config[key.strip()] = value.strip().strip('"')
-        return config
-    except Exception as e:
-        print(f"无法加载配置文件: {e}")
-        sys.exit(1)
+# 更新系统并安装必要的工具
+echo "更新系统并安装必要的工具..."
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y python3 python3-pip python3-venv git wget
 
+# 克隆 GitHub 仓库并确保获取最新更新
+echo "确保获取最新的 GitHub 仓库更新..."
+if [ -d "NC_Reset" ]; then
+    echo "NC_Reset 目录已存在，覆盖 vserver_manager.py 和 install.sh 文件..."
+    cd NC_Reset
+    git pull origin main  # 拉取最新的更新
+    rm -f vserver_manager.py install.sh  # 删除旧的文件
+else
+    git clone https://github.com/hujixiang0402/NC_Reset.git
+    cd NC_Reset
+fi
 
-# 从 config.sh 文件加载凭据
-config = load_config()
-LOGIN_NAME = config.get("LOGIN_NAME")
-PASSWORD = config.get("PASSWORD")
+# 下载更新的 vserver_manager.py 和 install.sh 文件
+echo "下载更新的 vserver_manager.py 和 install.sh 文件..."
+wget https://raw.githubusercontent.com/hujixiang0402/NC_Reset/main/vserver_manager.py
+wget https://raw.githubusercontent.com/hujixiang0402/NC_Reset/main/install.sh
 
-# 检查是否成功加载凭据
-if not LOGIN_NAME or not PASSWORD:
-    print("请确保 config.sh 文件中包含有效的 LOGIN_NAME 和 PASSWORD。")
-    sys.exit(1)
+# 创建虚拟环境并激活
+echo "创建虚拟环境..."
+python3 -m venv venv
+source venv/bin/activate
 
-# 初始化客户端
-client = NetcupWebservice(loginname=LOGIN_NAME, password=PASSWORD)
+# 手动安装 Python 依赖
+echo "安装 Python 依赖..."
+pip install netcup-webservice
 
+# 检查是否存在 config.sh 文件，如果存在则从中读取登录信息
+if [ -f "config.sh" ]; then
+    echo "从 config.sh 文件读取登录凭据..."
+    source config.sh
+else
+    # 提示用户输入 Netcup 登录凭据并保存为配置文件
+    echo "请输入 Netcup 登录凭据（用于 API）..."
+    read -p "登录名: " login_name
+    read -sp "密码: " password
+    echo ""
+    echo "登录凭据保存中..."
+    echo "LOGIN_NAME=\"$login_name\"" > config.sh
+    echo "PASSWORD=\"$password\"" >> config.sh
+    # 设置配置文件权限
+    chmod +x config.sh
+fi
 
-def print_menu():
-    """打印功能菜单"""
-    print("\n--- Netcup 服务器 管理器 ---")
-    print("1. 查看所有服务器")
-    print("2. 获取服务器状态")
-    print("3. 启动服务器")
-    print("4. 停止服务器")
-    print("5. 重启服务器")
-    print("6. 获取服务器流量")
-    print("7. 修改服务器昵称")
-    print("8. 更改用户密码")
-    print("9. 查看服务器信息")
-    print("10. 退出")
+# 设置 Python 脚本权限
+chmod +x vserver_manager.py
 
+# 运行脚本
+echo "运行 vServer 管理器..."
+python vserver_manager.py
 
-def fetch_server_mapping():
-    """获取服务器名称和昵称的映射"""
-    mapping = {}
-    try:
-        servers = client.get_vservers()
-        for server in servers:
-            try:
-                info = client.get_vserver_information(server)
-                nickname = getattr(info, 'vServerNickname', server)  # 获取昵称
-                mapping[nickname] = server  # 建立昵称到名称的映射
-            except Exception:
-                mapping[server] = server  # 如果获取失败，用名称作为映射
-    except Exception as e:
-        print(f"获取服务器信息时出错: {e}")
-    return mapping
-
-
-def get_server_by_nickname(nickname, mapping):
-    """根据昵称获取服务器名称"""
-    return mapping.get(nickname, None)
-
-
-def get_servers(mapping):
-    """获取所有服务器并显示昵称"""
-    print("\n服务器: ")
-    for nickname, server_name in mapping.items():
-        print(f"- {nickname}")
-
-
-def get_server_state(server_name):
-    """获取服务器状态"""
-    try:
-        state = client.get_vserver_state(server_name)
-        print(f"服务器 '{server_name}' 的状态: {state}")
-    except Exception as e:
-        print(f"错误: {e}")
-
-
-def start_server(server_name):
-    """启动服务器"""
-    try:
-        client.start_vserver(server_name)
-        print(f"服务器 '{server_name}' 启动成功！")
-    except Exception as e:
-        print(f"错误: {e}")
-
-
-def stop_server(server_name):
-    """停止服务器"""
-    try:
-        client.stop_vserver(server_name)
-        print(f"服务器 '{server_name}' 停止成功！")
-    except Exception as e:
-        print(f"错误: {e}")
-
-
-def reset_server(server_name):
-    """硬重置服务器"""
-    try:
-        client.reset_vserver(server_name)
-        print(f"服务器 '{server_name}' 已硬重置！")
-    except Exception as e:
-        print(f"错误: {e}")
-
-
-def change_user_password(new_password):
-    """更改用户密码"""
-    try:
-        client.change_user_password(new_password)
-        print("用户密码已更改！")
-    except Exception as e:
-        print(f"错误: {e}")
-
-
-def get_server_traffic(server_name):
-    """获取服务器流量统计"""
-    try:
-        # 获取当前日期
-        today = datetime.today()
-        year = today.year
-        month = today.month
-        day = today.day
-
-        # 获取当天的流量数据
-        traffic = client.get_vserver_traffic_of_day(server_name, year, month, day)
-        print(f"服务器 '{server_name}' 当日流量: {traffic}")
-    except Exception as e:
-        print(f"错误: {e}")
-
-
-def get_server_information(server_name):
-    """获取服务器详细信息"""
-    try:
-        info = client.get_vserver_information(server_name)
-        print(f"服务器 '{server_name}' 详细信息: ")
-        print(info)
-    except Exception as e:
-        print(f"错误: {e}")
-
-
-def change_server_nickname(server_name, new_nickname):
-    """修改服务器昵称"""
-    try:
-        client.set_vserver_nickname(server_name, new_nickname)
-        print(f"服务器 '{server_name}' 昵称已更改为 '{new_nickname}'！")
-    except Exception as e:
-        print(f"错误: {e}")
-
-
-def main():
-    # 初始化服务器名称和昵称的映射
-    server_mapping = fetch_server_mapping()
-
-    while True:
-        print_menu()
-        choice = input("请选择操作：")
-
-        if choice == "1":
-            get_servers(server_mapping)
-
-        elif choice == "2":
-            nickname = input("请输入服务器昵称：")
-            server_name = get_server_by_nickname(nickname, server_mapping)
-            if server_name:
-                get_server_state(server_name)
-            else:
-                print(f"服务器 '{nickname}' 未找到。")
-
-        elif choice == "3":
-            nickname = input("请输入服务器昵称：")
-            server_name = get_server_by_nickname(nickname, server_mapping)
-            if server_name:
-                start_server(server_name)
-            else:
-                print(f"服务器 '{nickname}' 未找到。")
-
-        elif choice == "4":
-            nickname = input("请输入服务器昵称：")
-            server_name = get_server_by_nickname(nickname, server_mapping)
-            if server_name:
-                stop_server(server_name)
-            else:
-                print(f"服务器 '{nickname}' 未找到。")
-
-        elif choice == "5":
-            nickname = input("请输入服务器昵称：")
-            server_name = get_server_by_nickname(nickname, server_mapping)
-            if server_name:
-                reset_server(server_name)
-            else:
-                print(f"服务器 '{nickname}' 未找到。")
-
-        elif choice == "6":
-            nickname = input("请输入服务器昵称：")
-            server_name = get_server_by_nickname(nickname, server_mapping)
-            if server_name:
-                get_server_traffic(server_name)
-            else:
-                print(f"服务器 '{nickname}' 未找到。")
-
-        elif choice == "7":
-            nickname = input("请输入服务器昵称：")
-            server_name = get_server_by_nickname(nickname, server_mapping)
-            if server_name:
-                new_nickname = input("请输入新的昵称：")
-                change_server_nickname(server_name, new_nickname)
-                server_mapping = fetch_server_mapping()  # 更新映射
-            else:
-                print(f"服务器 '{nickname}' 未找到。")
-
-        elif choice == "8":
-            new_password = input("请输入新的密码：")
-            change_user_password(new_password)
-
-        elif choice == "9":
-            nickname = input("请输入服务器昵称：")
-            server_name = get_server_by_nickname(nickname, server_mapping)
-            if server_name:
-                get_server_information(server_name)
-            else:
-                print(f"服务器 '{nickname}' 未找到。")
-
-        elif choice == "10":
-            print("退出程序...")
-            sys.exit(0)
-
-        else:
-            print("无效选择，请重新选择。")
-
-
-if __name__ == "__main__":
-    main()
+# 退出虚拟环境
+deactivate
