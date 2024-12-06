@@ -1,7 +1,7 @@
-import os
+from netcup_webservice import NetcupWebservice
 import sys
 from datetime import datetime
-from netcup_webservice import NetcupWebservice
+
 
 def load_config():
     """从 config.sh 文件加载 Netcup 凭据"""
@@ -71,7 +71,7 @@ def get_server_by_nickname(nickname, mapping):
 
 def get_servers(mapping):
     """获取所有服务器并显示昵称"""
-    print("\n服务器: ")
+    print("\n服务器:")
     for nickname, server_name in mapping.items():
         print(f"- {nickname}")
 
@@ -141,7 +141,7 @@ def get_server_information(server_name):
     """获取服务器详细信息"""
     try:
         info = client.get_vserver_information(server_name)
-        print(f"服务器 '{server_name}' 详细信息: ")
+        print(f"服务器 '{server_name}' 详细信息:")
         print(info)
     except Exception as e:
         print(f"错误: {e}")
