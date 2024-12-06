@@ -5,14 +5,10 @@ echo "更新系统并安装必要的工具..."
 sudo apt update && sudo apt upgrade -y
 sudo apt install -y python3 python3-pip python3-venv git wget
 
-# 设置 GitHub 密钥环境变量（用于访问私有仓库）
-echo "配置 GitHub 密钥..."
-export GITHUB_TOKEN="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"
-
-# 克隆 GitHub 私有仓库
+# 克隆 GitHub 仓库
 echo "克隆 GitHub 仓库..."
 git clone https://github.com/hujixiang0402/NC_Reset.git
-cd NC_Reset
+cd reset_vserver
 
 # 创建虚拟环境并激活
 echo "创建虚拟环境..."
