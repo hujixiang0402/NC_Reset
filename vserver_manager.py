@@ -1,14 +1,12 @@
-import os
 from netcup_webservice import NetcupWebservice
 import sys
-import subprocess
 
 
-def load_config_from_file(file_path):
-    """从指定路径加载 Netcup 凭据"""
+def load_config():
+    """从 config.sh 文件加载 Netcup 凭据"""
     config = {}
     try:
-        with open(file_path, "r") as f:
+        with open("config.sh", "r") as f:
             for line in f.readlines():
                 if "=" in line:
                     key, value = line.strip().split("=", 1)
@@ -16,46 +14,17 @@ def load_config_from_file(file_path):
         return config
     except Exception as e:
         print(f"无法加载配置文件: {e}")
-        return None
+        sys.exit(1)
 
 
-def clone_or_update_repo(repo_url, local_path):
-    """克隆或更新 GitHub 仓库"""
-    try:
-        if os.path.exists(local_path):
-            print("检测到本地目录存在，尝试拉取更新...")
-            subprocess.run(["git", "-C", local_path, "pull"], check=True)
-        else:
-            print("本地目录不存在，开始克隆仓库...")
-            subprocess.run(["git", "clone", repo_url, local_path], check=True)
-        print("仓库同步完成！")
-    except subprocess.CalledProcessError as e:
-        print(f"仓库同步失败: {e}")
-
-
-# GitHub 仓库相关信息
-REPO_URL = "https://github.com/your_username/NC_Reset.git"
-LOCAL_REPO_PATH = "/root/NC_Reset"
-
-# 确保 GitHub 仓库已同步
-clone_or_update_repo(REPO_URL, LOCAL_REPO_PATH)
-
-# 优先从配置文件加载凭据
-config_file_path = os.path.join(LOCAL_REPO_PATH, "config.sh")
-config = load_config_from_file(config_file_path)
-
-if config and "LOGIN_NAME" in config and "PASSWORD" in config:
-    LOGIN_NAME = config["LOGIN_NAME"]
-    PASSWORD = config["PASSWORD"]
-    print(f"从配置文件加载凭据成功！\n登录名: {LOGIN_NAME}")
-else:
-    print("未找到配置文件或文件无效，请手动输入凭据。")
-    LOGIN_NAME = input("登录名: ").strip()
-    PASSWORD = input("密码: ").strip()
+# 从 config.sh 文件加载凭据
+config = load_config()
+LOGIN_NAME = config.get("LOGIN_NAME")
+PASSWORD = config.get("PASSWORD")
 
 # 检查是否成功加载凭据
 if not LOGIN_NAME or not PASSWORD:
-    print("未提供有效的 LOGIN_NAME 和 PASSWORD。退出程序...")
+    print("请确保 config.sh 文件中包含有效的 LOGIN_NAME 和 PASSWORD。")
     sys.exit(1)
 
 # 初始化客户端
@@ -77,7 +46,106 @@ def print_menu():
     print("10. 退出")
 
 
-# 以下为其他功能代码，与原功能逻辑相同
+def fetch_server_mapping():
+    """获取服务器名称和昵称的映射"""
+    mapping = {}
+    try:
+        servers = client.get_vservers()
+        for server in servers:
+            try:
+                info = client.get_vserver_information(server)
+                nickname = getattr(info, 'vServerNickname', server)  # 获取昵称
+                mapping[nickname] = server  # 建立昵称到名称的映射
+            except Exception:
+                mapping[server] = server  # 如果获取失败，用名称作为映射
+    except Exception as e:
+        print(f"获取服务器信息时出错: {e}")
+    return mapping
+
+
+def get_server_by_nickname(nickname, mapping):
+    """根据昵称获取服务器名称"""
+    return mapping.get(nickname, None)
+
+
+def get_servers(mapping):
+    """获取所有服务器并显示昵称"""
+    print("\n服务器:")
+    for nickname, server_name in mapping.items():
+        print(f"- {nickname}")
+
+
+def get_server_state(server_name):
+    """获取服务器状态"""
+    try:
+        state = client.get_vserver_state(server_name)
+        print(f"服务器 '{server_name}' 的状态: {state}")
+    except Exception as e:
+        print(f"错误: {e}")
+
+
+def start_server(server_name):
+    """启动服务器"""
+    try:
+        client.start_vserver(server_name)
+        print(f"服务器 '{server_name}' 启动成功！")
+    except Exception as e:
+        print(f"错误: {e}")
+
+
+def stop_server(server_name):
+    """停止服务器"""
+    try:
+        client.stop_vserver(server_name)
+        print(f"服务器 '{server_name}' 停止成功！")
+    except Exception as e:
+        print(f"错误: {e}")
+
+
+def reset_server(server_name):
+    """硬重置服务器"""
+    try:
+        client.reset_vserver(server_name)
+        print(f"服务器 '{server_name}' 已硬重置！")
+    except Exception as e:
+        print(f"错误: {e}")
+
+
+def change_user_password(new_password):
+    """更改用户密码"""
+    try:
+        client.change_user_password(new_password)
+        print("用户密码已更改！")
+    except Exception as e:
+        print(f"错误: {e}")
+
+
+def get_server_traffic(server_name):
+    """获取服务器流量统计"""
+    try:
+        traffic = client.get_vserver_traffic_of_day(server_name)
+        print(f"服务器 '{server_name}' 当日流量: {traffic}")
+    except Exception as e:
+        print(f"错误: {e}")
+
+
+def get_server_information(server_name):
+    """获取服务器详细信息"""
+    try:
+        info = client.get_vserver_information(server_name)
+        print(f"服务器 '{server_name}' 详细信息:")
+        print(info)
+    except Exception as e:
+        print(f"错误: {e}")
+
+
+def change_server_nickname(server_name, new_nickname):
+    """修改服务器昵称"""
+    try:
+        client.set_vserver_nickname(server_name, new_nickname)
+        print(f"服务器 '{server_name}' 昵称已更改为 '{new_nickname}'！")
+    except Exception as e:
+        print(f"错误: {e}")
 
 
 def main():
