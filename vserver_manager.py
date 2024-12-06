@@ -1,9 +1,11 @@
 from netcup_webservice import NetcupWebservice
 import sys
+import time
+import requests
 
 
 def load_config():
-    """从 config.sh 文件加载 Netcup 凭据"""
+    """从 config.sh 文件加载配置"""
     config = {}
     try:
         with open("config.sh", "r") as f:
@@ -21,13 +23,16 @@ def load_config():
 config = load_config()
 LOGIN_NAME = config.get("LOGIN_NAME")
 PASSWORD = config.get("PASSWORD")
+QB_PORT = config.get("QB_PORT")
+QB_USERNAME = config.get("QB_USERNAME")
+QB_PASSWORD = config.get("QB_PASSWORD")
 
 # 检查是否成功加载凭据
 if not LOGIN_NAME or not PASSWORD:
     print("请确保 config.sh 文件中包含有效的 LOGIN_NAME 和 PASSWORD。")
     sys.exit(1)
 
-# 初始化客户端
+# 初始化 Netcup 客户端
 client = NetcupWebservice(loginname=LOGIN_NAME, password=PASSWORD)
 
 
@@ -43,8 +48,8 @@ def print_menu():
     print("7. 修改服务器昵称")
     print("8. 更改用户密码")
     print("9. 查看服务器信息")
-    print("10. 退出")
-    print("11. NC 一键硬重启")
+    print("10. NC 一键硬重启")
+    print("11. 退出")
 
 
 def fetch_server_mapping():
@@ -55,26 +60,26 @@ def fetch_server_mapping():
         for server in servers:
             try:
                 info = client.get_vserver_information(server)
-                nickname = getattr(info, 'vServerNickname', server)  # 获取昵称
-                ipv4_address = getattr(info, 'vServerIPv4Address', '未知')  # 获取 IPv4 地址
-                mapping[nickname] = {'name': server, 'ipv4': ipv4_address}
+                nickname = getattr(info, 'vServerNickname', server)
+                ipv4 = getattr(info, 'ipv4', None)
+                mapping[nickname] = {"name": server, "ipv4": ipv4}
             except Exception:
-                mapping[server] = {'name': server, 'ipv4': '未知'}
+                mapping[server] = {"name": server, "ipv4": None}
     except Exception as e:
         print(f"获取服务器信息时出错: {e}")
     return mapping
 
 
 def get_server_by_nickname(nickname, mapping):
-    """根据昵称获取服务器名称"""
+    """根据昵称获取服务器信息"""
     return mapping.get(nickname, None)
 
 
 def get_servers(mapping):
-    """获取所有服务器并显示昵称与 IPv4 地址"""
-    print("\n服务器列表:")
+    """获取所有服务器并显示昵称"""
+    print("\n服务器:")
     for nickname, details in mapping.items():
-        print(f"- 昵称: {nickname}, 名称: {details['name']}, IPv4 地址: {details['ipv4']}")
+        print(f"- {nickname} (IP: {details['ipv4']})")
 
 
 def get_server_state(server_name):
@@ -150,8 +155,86 @@ def change_server_nickname(server_name, new_nickname):
         print(f"错误: {e}")
 
 
+def qb_login(ip, port, username, password):
+    """登录 QBittorrent Web API"""
+    try:
+        session = requests.Session()
+        url = f"http://{ip}:{port}/api/v2/auth/login"
+        response = session.post(url, data={"username": username, "password": password})
+        if response.text == "Ok.":
+            print(f"成功登录 QBittorrent ({ip}:{port})")
+            return session
+        else:
+            print("登录 QBittorrent 失败，请检查用户名和密码。")
+            return None
+    except Exception as e:
+        print(f"连接 QBittorrent 失败: {e}")
+        return None
+
+
+def qb_pause_all(session, ip, port):
+    """暂停所有种子"""
+    try:
+        url = f"http://{ip}:{port}/api/v2/torrents/pause"
+        response = session.post(url)
+        if response.status_code == 200:
+            print("所有种子已暂停。")
+        else:
+            print("暂停种子失败，请检查 QBittorrent 状态。")
+    except Exception as e:
+        print(f"暂停种子时发生错误: {e}")
+
+
+def qb_resume_all(session, ip, port):
+    """恢复所有种子"""
+    try:
+        url = f"http://{ip}:{port}/api/v2/torrents/resume"
+        response = session.post(url)
+        if response.status_code == 200:
+            print("所有种子已恢复。")
+        else:
+            print("恢复种子失败，请检查 QBittorrent 状态。")
+    except Exception as e:
+        print(f"恢复种子时发生错误: {e}")
+
+
+def reset_server_with_qb(server_name, server_ip, qb_config):
+    """通过 QBittorrent 暂停种子后重启服务器并恢复种子"""
+    qb_port = qb_config["QB_PORT"]
+    qb_username = qb_config["QB_USERNAME"]
+    qb_password = qb_config["QB_PASSWORD"]
+
+    # 登录 QBittorrent
+    qb_session = qb_login(server_ip, qb_port, qb_username, qb_password)
+    if not qb_session:
+        print("无法连接到 QBittorrent，终止操作。")
+        return
+
+    # 暂停所有种子
+    qb_pause_all(qb_session, server_ip, qb_port)
+
+    # 等待 1 分钟
+    print("等待 1 分钟...")
+    time.sleep(60)
+
+    # 重启服务器
+    try:
+        client.reset_vserver(server_name)
+        print(f"服务器 '{server_name}' 已硬重启。")
+    except Exception as e:
+        print(f"重启服务器时发生错误: {e}")
+        return
+
+    # 等待服务器重启完成
+    print("等待服务器重启完成...")
+    time.sleep(60)
+
+    # 恢复所有种子
+    qb_resume_all(qb_session, server_ip, qb_port)
+
+
 def main():
-    # 初始化服务器名称和昵称的映射
+    """主程序"""
     server_mapping = fetch_server_mapping()
 
     while True:
@@ -165,7 +248,7 @@ def main():
             nickname = input("请输入服务器昵称：")
             server = get_server_by_nickname(nickname, server_mapping)
             if server:
-                get_server_state(server['name'])
+                get_server_state(server["name"])
             else:
                 print(f"服务器 '{nickname}' 未找到。")
 
@@ -173,7 +256,7 @@ def main():
             nickname = input("请输入服务器昵称：")
             server = get_server_by_nickname(nickname, server_mapping)
             if server:
-                start_server(server['name'])
+                start_server(server["name"])
             else:
                 print(f"服务器 '{nickname}' 未找到。")
 
@@ -181,7 +264,7 @@ def main():
             nickname = input("请输入服务器昵称：")
             server = get_server_by_nickname(nickname, server_mapping)
             if server:
-                stop_server(server['name'])
+                stop_server(server["name"])
             else:
                 print(f"服务器 '{nickname}' 未找到。")
 
@@ -189,7 +272,7 @@ def main():
             nickname = input("请输入服务器昵称：")
             server = get_server_by_nickname(nickname, server_mapping)
             if server:
-                reset_server(server['name'])
+                reset_server(server["name"])
             else:
                 print(f"服务器 '{nickname}' 未找到。")
 
@@ -197,7 +280,7 @@ def main():
             nickname = input("请输入服务器昵称：")
             server = get_server_by_nickname(nickname, server_mapping)
             if server:
-                get_server_traffic(server['name'])
+                get_server_traffic(server["name"])
             else:
                 print(f"服务器 '{nickname}' 未找到。")
 
@@ -206,7 +289,7 @@ def main():
             server = get_server_by_nickname(nickname, server_mapping)
             if server:
                 new_nickname = input("请输入新的昵称：")
-                change_server_nickname(server['name'], new_nickname)
+                change_server_nickname(server["name"], new_nickname)
                 server_mapping = fetch_server_mapping()  # 更新映射
             else:
                 print(f"服务器 '{nickname}' 未找到。")
@@ -219,23 +302,24 @@ def main():
             nickname = input("请输入服务器昵称：")
             server = get_server_by_nickname(nickname, server_mapping)
             if server:
-                get_server_information(server['name'])
+                get_server_information(server["name"])
             else:
                 print(f"服务器 '{nickname}' 未找到。")
 
         elif choice == "10":
+            nickname = input("请输入服务器昵称：")
+            server = get_server_by_nickname(nickname, server_mapping)
+            if server:
+                reset_server_with_qb(server["name"], server["ipv4"], config)
+            else:
+                print(f"服务器 '{nickname}' 未找到。")
+
+        elif choice == "11":
             print("退出程序...")
             sys.exit(0)
 
-        elif choice == "11":
-            print("一键硬重启所有服务器...")
-            for nickname, details in server_mapping.items():
-                reset_server(details['name'])
-            print("所有服务器已重启。")
-
         else:
             print("无效选择，请重新选择。")
-
 
 if __name__ == "__main__":
     main()
