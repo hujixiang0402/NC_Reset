@@ -48,7 +48,8 @@ def get_vserver_nickname(vserver_id):
     try:
         # 获取服务器详细信息，假设通过该 API 获取昵称
         info = client.get_vserver_information(vserver_id)
-        return info.nickname  # 假设返回的信息中有昵称字段
+        nickname = info.get('vServerNickname')  # 从详细信息中提取 vServerNickname 字段
+        return nickname
     except Exception as e:
         print(f"获取昵称时出错: {e}")
         return None
